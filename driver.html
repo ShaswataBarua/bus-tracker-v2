@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Driver Location Share</title>
+    <style>
+      :root {
+        --green-900: #0a5f3a;
+        --green-800: #0f6d42;
+        --green-700: #13824f;
+        --green-100: #ebfaf1;
+        --green-50: #f7fff9;
+        --white: #ffffff;
+        --text: #173127;
+        --muted: #5d7066;
+        --border: #d8ebdf;
+        --danger: #d6535a;
+        --shadow: 0 18px 42px rgba(10, 95, 58, 0.14);
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        font-family: Arial, Helvetica, sans-serif;
+        background: linear-gradient(180deg, #f2fbf6 0%, #eefaf3 100%);
+        color: var(--text);
+      }
+
+      body {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 20px 16px;
+      }
+
+      .app-shell {
+        width: min(100%, 980px);
+      }
+
+      .screen {
+        width: min(100%, 620px);
+        margin: 0 auto;
+      }
+
+      .screen[hidden] {
+        display: none;
+      }
+
+      .container {
+        background: rgba(255,255,255,0.93);
+        border: 1px solid rgba(10, 95, 58, 0.12);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        padding: 24px 18px;
+      }
+
+      .topbar {
+        text-align: center;
+        margin-bottom: 18px;
+      }
+
+      .topbar .eyebrow {
+        display: inline-block;
+        background: var(--green-100);
+        color: var(--green-800);
+        border-radius: 999px;
+        padding: 7px 10px;
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .topbar h1 {
+        margin: 12px 0 0;
+        font-size: clamp(1.8rem, 4vw, 2.4rem);
+      }
+
+      .back-btn {
+        border: none;
+        background: var(--white);
+        color: var(--green-900);
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        padding: 10px 14px;
+        font-size: 0.98rem;
+        font-weight: 700;
+        cursor: pointer;
+        margin-bottom: 14px;
+      }
+
+      .route-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .route-card {
+        border: 1px solid var(--border);
+        background: var(--white);
+        border-radius: 20px;
+        padding: 16px 12px 12px;
+        text-align: left;
+        box-shadow: 0 12px 24px rgba(10, 95, 58, 0.07);
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .route-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(19, 130, 79, 0.24);
+        box-shadow: 0 18px 30px rgba(10, 95, 58, 0.08);
+      }
+
+      .route-card h3 {
+        margin: 8px 0 8px;
+        color: var(--green-900);
+        font-size: 1.2rem;
+      }
+
+      .route-card .route-body {
+        font-size: 0.82rem;
+        line-height: 1.6;
+        color: var(--text);
+        margin-bottom: 12px;
+      }
+
+      .route-card .route-body strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--green-800);
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .route-card .assign-btn {
+        width: 100%;
+        background: linear-gradient(135deg, var(--green-700), var(--green-900));
+        color: var(--white);
+        border: none;
+        border-radius: 10px;
+        padding: 11px 12px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .share-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .share-header h2 {
+        margin: 0;
+        font-size: clamp(1.4rem, 3vw, 2rem);
+      }
+
+      .badge {
+        background: var(--green-100);
+        color: var(--green-800);
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .status {
+        background: #edf8f1;
+        border: 1px solid rgba(19, 130, 79, 0.12);
+        border-radius: 14px;
+        padding: 14px 16px;
+        text-align: center;
+        font-weight: 700;
+        color: var(--green-900);
+        margin-bottom: 18px;
+      }
+
+      .status.off {
+        background: #f5f8f6;
+        color: var(--muted);
+        border-color: var(--border);
+      }
+
+      .sharing-controls {
+        display: grid;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .field-group {
+        display: grid;
+        gap: 8px;
+      }
+
+      .field-label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--green-800);
+      }
+
+      .field-group input,
+      .field-group select {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #fbfffc;
+        color: var(--text);
+        padding: 12px 14px;
+        font-size: 1rem;
+      }
+
+      .field-group input:focus,
+      .field-group select:focus {
+        outline: none;
+        border-color: rgba(19, 130, 79, 0.8);
+        box-shadow: 0 0 0 4px rgba(19, 130, 79, 0.1);
+      }
+
+      .status.error {
+        background: #fff2f3;
+        color: #8f2f39;
+        border-color: rgba(214, 83, 90, 0.2);
+      }
+
+      .route-details {
+        background: #f7fdf9;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 18px;
+      }
+
+      .route-details h3 {
+        margin: 0 0 12px;
+        color: var(--green-900);
+      }
+
+      .route-details .info-block {
+        margin-bottom: 12px;
+        line-height: 1.6;
+        color: var(--text);
+      }
+
+      .route-details .info-block strong {
+        display: block;
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--green-800);
+        margin-bottom: 4px;
+      }
+
+      .route-details .timeline {
+        position: relative;
+        padding-left: 12px;
+        margin-top: 8px;
+      }
+
+      .route-details .timeline::before {
+        content: "";
+        position: absolute;
+        left: 4px;
+        top: 4px;
+        bottom: 4px;
+        width: 2px;
+        background: linear-gradient(180deg, rgba(19,130,79,0.35), rgba(19,130,79,0.1));
+      }
+
+      .route-details .timeline-item {
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 4px 0 8px;
+      }
+
+      .route-details .timeline-item:last-child {
+        padding-bottom: 0;
+      }
+
+      .route-details .timeline-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--green-700);
+        border: 2px solid var(--white);
+        box-shadow: 0 0 0 4px rgba(19, 130, 79, 0.12);
+        margin-top: 4px;
+        flex-shrink: 0;
+      }
+
+      .schedule-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        line-height: 1.5;
+        margin-top: 6px;
+      }
+
+      .schedule-icon {
+        font-size: 1rem;
+      }
+
+      .coord-card {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .coord-box {
+        background: #f5fff9;
+        border: 1px solid rgba(19, 130, 79, 0.12);
+        border-radius: 12px;
+        padding: 10px 12px;
+      }
+
+      .coord-box strong {
+        display: block;
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--green-900);
+        margin-bottom: 4px;
+      }
+
+      .coord-box span {
+        font-weight: 700;
+        color: var(--text);
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .btn {
+        flex: 1;
+        border: none;
+        border-radius: 12px;
+        padding: 14px 14px;
+        font-size: 0.97rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .primary-btn {
+        background: linear-gradient(135deg, var(--green-700), var(--green-900));
+        color: var(--white);
+        box-shadow: 0 12px 18px rgba(10, 95, 58, 0.16);
+      }
+
+      .primary-btn.sharing {
+        background: linear-gradient(135deg, #178c59, #0c6e49);
+      }
+
+      .secondary-btn {
+        background: #f3f7f4;
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+
+      .danger-btn {
+        background: linear-gradient(135deg, #e35a66, var(--danger));
+        color: var(--white);
+      }
+
+      .status-pulse {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #2ecb75;
+        box-shadow: 0 0 0 6px rgba(46, 203, 117, 0.15);
+        animation: pulse 1.6s infinite ease-in-out;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.15); opacity: 0.75; }
+      }
+
+      .note {
+        margin-top: 10px;
+        font-size: 0.9rem;
+        text-align: center;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(8, 30, 20, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        z-index: 30;
+      }
+
+      .modal.show {
+        display: flex;
+      }
+
+      .modal-card {
+        width: min(100%, 380px);
+        background: var(--white);
+        border-radius: 20px;
+        padding: 22px 18px;
+        box-shadow: var(--shadow);
+      }
+
+      .modal-card h3 {
+        margin: 0 0 10px;
+        color: var(--text);
+      }
+
+      .modal-card p {
+        margin: 0 0 18px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .modal-card label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: var(--text);
+      }
+
+      .modal-card input {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #fbfffc;
+        padding: 12px 14px;
+        font-size: 1rem;
+        color: var(--text);
+        margin-bottom: 12px;
+      }
+
+      .modal-card input:focus {
+        outline: none;
+        border-color: rgba(19, 130, 79, 0.8);
+        box-shadow: 0 0 0 4px rgba(19, 130, 79, 0.1);
+      }
+
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .modal-error {
+        min-height: 18px;
+        color: var(--danger);
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      @media (max-width: 480px) {
+        .route-grid,
+        .coord-card,
+        .actions,
+        .modal-actions {
+          grid-template-columns: 1fr;
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="screen" id="routeScreen">
+        <div class="container">
+          <button class="back-btn" type="button" id="routeBackBtn">← Back</button>
+          <div class="topbar">
+            <div class="eyebrow">Driver portal</div>
+            <h1>Select Bus</h1>
+          </div>
+
+          <div class="route-grid">
+            <div class="route-card" data-route="route1">
+              <h3>BUS 1</h3>
+              <div class="route-body">
+                <strong>Stops</strong>
+                <div class="timeline">
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>GEC</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>2 No Gate</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Muradpur</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Chandgaon Thana</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Access Road</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Tulatoli</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>New bridge</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Moizzartek</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Shantirhut</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Badamtol</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Bypass road</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Komol munshir hut</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>BGC Biydha Nagar</span></div>
+                </div>
+              </div>
+              <div class="route-body">
+                <strong>Schedule</strong>
+                <div class="schedule-row"><span class="schedule-icon" aria-hidden="true">🕐</span><span>Leaves 8:15 AM • Reaches Campus 9:30 AM</span></div>
+              </div>
+              <button class="assign-btn" type="button" data-route="route1">Assign as Driver</button>
+            </div>
+
+            <div class="route-card" data-route="route2">
+              <h3>BUS 2</h3>
+              <div class="route-body">
+                <strong>Stops</strong>
+                <div class="timeline">
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Oxygen</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Muradpur</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Chandgaon Thana</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Access Road</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Tulatoli</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>New bridge</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Moizzartek</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Shantirhut</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Badamtol</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Bypass road</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Komol munshir hut</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>BGC Biydha Nagar</span></div>
+                </div>
+              </div>
+              <div class="route-body">
+                <strong>Schedule</strong>
+                <div class="schedule-row"><span class="schedule-icon" aria-hidden="true">🕐</span><span>Leaves 8:10 AM • Reaches Campus 9:30 AM</span></div>
+              </div>
+              <button class="assign-btn" type="button" data-route="route2">Assign as Driver</button>
+            </div>
+
+            <div class="route-card" data-route="route3">
+              <h3>BUS 3</h3>
+              <div class="route-body">
+                <strong>Stops</strong>
+                <div class="timeline">
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Agrabad</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Newmarket</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Kotoyali</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Newbridge</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Moizzartek</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Shantirhut</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Badamtol</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Bypass road</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Komol munshir hut</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>BGC Biydha Nagar</span></div>
+                </div>
+              </div>
+              <div class="route-body">
+                <strong>Schedule</strong>
+                <div class="schedule-row"><span class="schedule-icon" aria-hidden="true">🕐</span><span>Leaves 8:10 AM • Reaches Campus 9:30 AM</span></div>
+              </div>
+              <button class="assign-btn" type="button" data-route="route3">Assign as Driver</button>
+            </div>
+
+            <div class="route-card" data-route="route4">
+              <h3>BUS 4</h3>
+              <div class="route-body">
+                <strong>Stops</strong>
+                <div class="timeline">
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Anayet bazar</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>DC hill</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Kotuyali</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>New bridge</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Moizzartek</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Shantirhut</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Badamtol</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Bypass road</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>Komol munshir hut</span></div>
+                  <div class="timeline-item"><span class="timeline-dot"></span><span>BGC Biydha Nagar</span></div>
+                </div>
+              </div>
+              <div class="route-body">
+                <strong>Schedule</strong>
+                <div class="schedule-row"><span class="schedule-icon" aria-hidden="true">🕐</span><span>Leaves 8:10 AM • Reaches Campus 9:30 AM</span></div>
+              </div>
+              <button class="assign-btn" type="button" data-route="route4">Assign as Driver</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen" id="shareScreen" hidden>
+        <div class="container">
+          <button class="back-btn" type="button" id="shareBackBtn">← Back</button>
+          <div class="share-header">
+            <h2>Driver Share</h2>
+            <span class="badge" id="selectedRouteBadge">BUS 1</span>
+          </div>
+
+          <div class="sharing-controls">
+            <div class="field-group">
+              <label class="field-label" for="driverNameEntry">Driver name</label>
+              <input id="driverNameEntry" type="text" maxlength="40" placeholder="Enter your name" />
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="routeSelect">Route</label>
+              <select id="routeSelect">
+                <option value="route1">route1</option>
+                <option value="route2">route2</option>
+                <option value="route3">route3</option>
+                <option value="route4">route4</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="status" class="status off">No bus assigned yet.</div>
+
+          <div class="route-details" id="routeDetails">
+            <h3 id="assignmentTitle">You are driving BUS 1</h3>
+            <div class="info-block">
+              <strong>Route stops</strong>
+              <div class="timeline" id="routeStopsText"></div>
+            </div>
+            <div class="info-block">
+              <strong>Schedule</strong>
+              <div class="schedule-row"><span class="schedule-icon" aria-hidden="true">🕐</span><span id="routeScheduleText">Leaves 8:15 AM → Reaches Campus 9:30 AM → Returns to drop students 3:00 PM</span></div>
+              <div class="schedule-row"><span class="schedule-icon" aria-hidden="true">🏫</span><span>BGC Trust University</span></div>
+            </div>
+
+            <div class="coord-card">
+              <div class="coord-box">
+                <strong>Latitude</strong>
+                <span id="latitudeValue">--</span>
+              </div>
+              <div class="coord-box">
+                <strong>Longitude</strong>
+                <span id="longitudeValue">--</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn primary-btn" id="startBtn" type="button">Start Sharing Location</button>
+            <button class="btn danger-btn" id="stopBtn" type="button">Stop</button>
+          </div>
+
+          <div class="actions">
+            <button class="btn secondary-btn" id="changeRouteBtn" type="button">Unassign / Change Bus</button>
+          </div>
+
+          <div class="note">Location is shared every 10 seconds to Firebase for the selected bus route.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="assignmentModal" aria-hidden="true">
+      <div class="modal-card">
+        <h3>Enter your name</h3>
+        <p>Choose the name that will appear for this bus assignment.</p>
+        <label for="assignmentDriverNameInput">Driver name</label>
+        <input id="assignmentDriverNameInput" type="text" maxlength="40" placeholder="Enter your name" />
+        <div class="modal-error" id="driverNameError"></div>
+        <div class="modal-actions">
+          <button class="btn secondary-btn" id="cancelAssignmentBtn" type="button">Cancel</button>
+          <button class="btn primary-btn" id="confirmAssignmentBtn" type="button">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="permissionModal" aria-hidden="true">
+      <div class="modal-card">
+        <h3>Location access required</h3>
+        <p>Location permission was denied. Please open your app settings and allow location access so the driver can share the bus location.</p>
+        <div class="modal-actions">
+          <button class="btn secondary-btn" id="cancelPermissionBtn" type="button">Cancel</button>
+          <button class="btn primary-btn" id="openSettingsBtn" type="button">Open Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyAynPmLrkqPKD5VHd1HY2vt-bq5xmJ9fuc",
+        authDomain: "bus-tracker-11b51.firebaseapp.com",
+        databaseURL: "https://bus-tracker-11b51-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "bus-tracker-11b51",
+        storageBucket: "bus-tracker-11b51.firebasestorage.app",
+        messagingSenderId: "28373051420",
+        appId: "1:28373051420:web:da11dd98ec4249b31697d9"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+
+      const assignmentKey = 'bgc-bus-driver-assignments';
+      const routeMeta = {
+        route1: {
+          label: 'BUS 1',
+          stops: ['GEC', '2 No Gate', 'Muradpur', 'Chandgaon Thana', 'Access Road', 'Tulatoli', 'New bridge', 'Moizzartek', 'Shantirhut', 'Badamtol', 'Bypass road', 'Komol munshir hut', 'BGC Biydha Nagar'],
+          schedule: 'Leaves 8:15 AM → Reaches Campus 9:30 AM → Returns to drop students 3:00 PM'
+        },
+        route2: {
+          label: 'BUS 2',
+          stops: ['Oxygen', 'Muradpur', 'Chandgaon Thana', 'Access Road', 'Tulatoli', 'New bridge', 'Moizzartek', 'Shantirhut', 'Badamtol', 'Bypass road', 'Komol munshir hut', 'BGC Biydha Nagar'],
+          schedule: 'Leaves 8:10 AM → Reaches Campus 9:30 AM → Returns to drop students 3:00 PM'
+        },
+        route3: {
+          label: 'BUS 3',
+          stops: ['Agrabad', 'Newmarket', 'Kotoyali', 'Newbridge', 'Moizzartek', 'Shantirhut', 'Badamtol', 'Bypass road', 'Komol munshir hut', 'BGC Biydha Nagar'],
+          schedule: 'Leaves 8:10 AM → Reaches Campus 9:30 AM → Returns to drop students 3:00 PM'
+        },
+        route4: {
+          label: 'BUS 4',
+          stops: ['Anayet bazar', 'DC hill', 'Kotuyali', 'New bridge', 'Moizzartek', 'Shantirhut', 'Badamtol', 'Bypass road', 'Komol munshir hut', 'BGC Biydha Nagar'],
+          schedule: 'Leaves 8:10 AM → Reaches Campus 9:30 AM → Returns to drop students 3:00 PM'
+        }
+      };
+
+      let watchId = null;
+      let intervalId = null;
+      let isSharing = false;
+      let selectedRoute = 'route1';
+      let currentDriverName = '';
+      let pendingRouteKey = null;
+      let lastKnownPosition = { latitude: null, longitude: null, accuracy: null };
+      let screenStack = ['login'];
+
+      const routeScreen = document.getElementById('routeScreen');
+      const shareScreen = document.getElementById('shareScreen');
+      const statusEl = document.getElementById('status');
+      const startBtn = document.getElementById('startBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      const changeRouteBtn = document.getElementById('changeRouteBtn');
+      const routeBadge = document.getElementById('selectedRouteBadge');
+      const assignmentTitle = document.getElementById('assignmentTitle');
+      const routeStopsText = document.getElementById('routeStopsText');
+      const routeScheduleText = document.getElementById('routeScheduleText');
+      const latitudeValue = document.getElementById('latitudeValue');
+      const longitudeValue = document.getElementById('longitudeValue');
+      const permissionModal = document.getElementById('permissionModal');
+      const assignmentModal = document.getElementById('assignmentModal');
+      const driverNameEntry = document.getElementById('driverNameEntry');
+      const routeSelect = document.getElementById('routeSelect');
+      const assignmentDriverNameInput = document.getElementById('assignmentDriverNameInput');
+      const driverNameError = document.getElementById('driverNameError');
+      const openSettingsBtn = document.getElementById('openSettingsBtn');
+      const cancelPermissionBtn = document.getElementById('cancelPermissionBtn');
+      const cancelAssignmentBtn = document.getElementById('cancelAssignmentBtn');
+      const confirmAssignmentBtn = document.getElementById('confirmAssignmentBtn');
+      const routeBackBtn = document.getElementById('routeBackBtn');
+      const shareBackBtn = document.getElementById('shareBackBtn');
+
+      function setStatus(message, active = false, isError = false) {
+        statusEl.textContent = message;
+        statusEl.classList.toggle('off', !active);
+        statusEl.classList.toggle('error', isError);
+      }
+
+      function getAssignments() {
+        try {
+          const value = localStorage.getItem(assignmentKey);
+          if (!value) return [];
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+          console.error('Assignment parse error:', error);
+          return [];
+        }
+      }
+
+      function saveAssignments(assignments) {
+        localStorage.setItem(assignmentKey, JSON.stringify(assignments));
+      }
+
+      function removeCurrentDriverAssignment(routeKey, driverName) {
+        const assignments = getAssignments().filter((assignment) => !(assignment.routeKey === routeKey && assignment.driverName.toLowerCase() === driverName.toLowerCase()));
+        saveAssignments(assignments);
+      }
+
+      function showPermissionModal() {
+        permissionModal.classList.add('show');
+      }
+
+      function hidePermissionModal() {
+        permissionModal.classList.remove('show');
+      }
+
+      function showAssignmentModal(routeKey) {
+        pendingRouteKey = routeKey;
+        driverNameError.textContent = '';
+        assignmentDriverNameInput.value = driverNameEntry.value.trim();
+        assignmentModal.classList.add('show');
+        setTimeout(() => assignmentDriverNameInput.focus(), 50);
+      }
+
+      function hideAssignmentModal() {
+        assignmentModal.classList.remove('show');
+        pendingRouteKey = null;
+      }
+
+      function renderStopTimeline(stops) {
+        routeStopsText.innerHTML = stops.map((stop) => `
+          <div class="timeline-item"><span class="timeline-dot"></span><span>${stop}</span></div>
+        `).join('');
+      }
+
+      function showScreen(name) {
+        routeScreen.hidden = name !== 'selectBus';
+        shareScreen.hidden = name !== 'driverShare';
+
+        if (name === 'login') {
+          routeScreen.hidden = true;
+          shareScreen.hidden = true;
+        }
+      }
+
+      function showRouteSelection() {
+        if (screenStack[screenStack.length - 1] !== 'selectBus') {
+          screenStack.push('selectBus');
+        }
+        showScreen('selectBus');
+      }
+
+      function showSharingScreen(routeKey) {
+        const info = routeMeta[routeKey];
+        if (!info) {
+          console.error('Attempted to show share screen for unknown route:', routeKey);
+          showRouteSelection();
+          return;
+        }
+
+        selectedRoute = routeKey;
+        routeSelect.value = routeKey;
+        routeBadge.textContent = info.label;
+        assignmentTitle.textContent = `You are driving ${info.label}`;
+        routeScheduleText.textContent = info.schedule;
+        renderStopTimeline(info.stops);
+        if (driverNameEntry.value.trim()) {
+          currentDriverName = driverNameEntry.value.trim();
+        }
+        setStatus(`You are driving ${info.label}`, true, false);
+
+        if (screenStack[screenStack.length - 1] !== 'driverShare') {
+          screenStack.push('driverShare');
+        }
+        showScreen('driverShare');
+      }
+
+      function goBack() {
+        if (screenStack.length > 1) {
+          screenStack.pop();
+          const prev = screenStack[screenStack.length - 1];
+          showScreen(prev);
+          if (prev === 'login') {
+            window.history.back();
+          }
+        } else {
+          window.history.back();
+        }
+      }
+
+      function handleAssignmentConfirm() {
+        const routeKey = pendingRouteKey;
+        const value = assignmentDriverNameInput.value.trim();
+        if (!routeKey) {
+          driverNameError.textContent = 'Please select a bus first.';
+          return;
+        }
+
+        if (!value) {
+          driverNameError.textContent = 'Please enter your name.';
+          return;
+        }
+
+        currentDriverName = value;
+        driverNameEntry.value = value;
+        const assignments = getAssignments();
+        const existing = assignments.some((assignment) => assignment.routeKey === routeKey && assignment.driverName.toLowerCase() === value.toLowerCase());
+
+        if (!existing) {
+          assignments.push({ routeKey, driverName: value });
+          saveAssignments(assignments);
+        }
+
+        hideAssignmentModal();
+        showSharingScreen(routeKey);
+      }
+
+      function updateLocationDisplay(latitude, longitude) {
+        latitudeValue.textContent = Number.isFinite(latitude) ? latitude.toFixed(6) : '--';
+        longitudeValue.textContent = Number.isFinite(longitude) ? longitude.toFixed(6) : '--';
+      }
+
+      async function sendLocationToFirebase(lat, lng, accuracy, driverName, sharing) {
+        const routeKey = routeSelect.value || selectedRoute || 'route1';
+        selectedRoute = routeKey;
+        const locationData = {
+          latitude: Number.isFinite(lat) ? lat : null,
+          longitude: Number.isFinite(lng) ? lng : null,
+          accuracy: Number.isFinite(accuracy) ? accuracy : null,
+          updatedAt: Date.now(),
+          isSharing: Boolean(sharing),
+          driverName: (driverName || currentDriverName || driverNameEntry.value.trim() || '').trim()
+        };
+
+        try {
+          await set(ref(db, `busLocation/${routeKey}`), locationData);
+          console.log(`Location saved to Firebase for ${routeKey}`);
+        } catch (error) {
+          console.error('Error saving location:', error);
+        }
+      }
+
+      const writeLocationToFirebase = (lat, lng, accuracy, driverName, sharing) => sendLocationToFirebase(lat, lng, accuracy, driverName, sharing);
+
+      function handleLocation(position) {
+        const { latitude, longitude, accuracy } = position.coords;
+        lastKnownPosition = { latitude, longitude, accuracy };
+        updateLocationDisplay(latitude, longitude);
+        sendLocationToFirebase(latitude, longitude, accuracy, currentDriverName || driverNameEntry.value.trim(), true);
+      }
+
+      function handleError(error) {
+        console.error('Geolocation error:', error);
+
+        if (error && (error.code === 1 || error.code === 2 || error.code === 3)) {
+          setStatus('Location permission denied. Please enable location access.', false, true);
+          showPermissionModal();
+          return;
+        }
+
+        setStatus('Unable to access location. Please try again.', false, true);
+      }
+
+      async function requestNativePermissions() {
+        const capacitorPlugins = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins : null;
+        const geolocationPlugin = capacitorPlugins && capacitorPlugins.Geolocation ? capacitorPlugins.Geolocation : null;
+
+        if (!geolocationPlugin || !geolocationPlugin.requestPermissions) {
+          return true;
+        }
+
+        const permissionResult = await geolocationPlugin.requestPermissions();
+        const permissionValue = permissionResult && (permissionResult.location || permissionResult.coarseLocation);
+        if (permissionValue === 'denied') {
+          showPermissionModal();
+          return false;
+        }
+
+        return true;
+      }
+
+      async function requestLocationAccess() {
+        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+          const isAllowed = await requestNativePermissions();
+          if (!isAllowed) {
+            return false;
+          }
+
+          const capacitorPlugins = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins : null;
+          const geolocationPlugin = capacitorPlugins && capacitorPlugins.Geolocation ? capacitorPlugins.Geolocation : null;
+          if (geolocationPlugin && geolocationPlugin.getCurrentPosition) {
+            const position = await geolocationPlugin.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+            handleLocation(position);
+            return true;
+          }
+        }
+
+        if (!navigator.geolocation) {
+          setStatus('Geolocation is not supported on this device.', false, true);
+          return false;
+        }
+
+        return new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              handleLocation(position);
+              resolve(true);
+            },
+            (error) => {
+              handleError(error);
+              resolve(false);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          );
+        });
+      }
+
+      async function startSharing() {
+        const selectedKey = routeSelect.value || selectedRoute || 'route1';
+        selectedRoute = selectedKey;
+        const name = (driverNameEntry.value || '').trim();
+        if (!name) {
+          setStatus('Enter your driver name before starting.', false, true);
+          driverNameEntry.focus();
+          return;
+        }
+
+        currentDriverName = name;
+        driverNameEntry.value = name;
+        assignmentDriverNameInput.value = name;
+
+        const permissionGranted = await requestLocationAccess();
+        if (!permissionGranted) {
+          return;
+        }
+
+        isSharing = true;
+        setStatus(`Sharing ${routeMeta[selectedRoute].label}...`, true);
+        startBtn.textContent = 'Sharing Location...';
+        startBtn.classList.add('sharing');
+        startBtn.innerHTML = '<span class="status-pulse" aria-hidden="true"></span> Sharing Location...';
+
+        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+          const capacitorPlugins = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins : null;
+          const geolocationPlugin = capacitorPlugins && capacitorPlugins.Geolocation ? capacitorPlugins.Geolocation : null;
+          if (geolocationPlugin && geolocationPlugin.watchPosition) {
+            watchId = geolocationPlugin.watchPosition({ enableHighAccuracy: true }, (position) => { handleLocation(position); }, (error) => { handleError(error); });
+          }
+        }
+
+        if (!watchId && navigator.geolocation) {
+          watchId = navigator.geolocation.watchPosition(handleLocation, handleError, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          });
+        }
+
+        if (intervalId !== null) {
+          clearInterval(intervalId);
+        }
+
+        intervalId = setInterval(() => {
+          if (!isSharing) return;
+          if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+            const capacitorPlugins = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins : null;
+            const geolocationPlugin = capacitorPlugins && capacitorPlugins.Geolocation ? capacitorPlugins.Geolocation : null;
+            if (geolocationPlugin && geolocationPlugin.getCurrentPosition) {
+              geolocationPlugin.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 })
+                .then((position) => handleLocation(position))
+                .catch((error) => handleError(error));
+              return;
+            }
+          }
+
+          navigator.geolocation.getCurrentPosition(handleLocation, handleError, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          });
+        }, 10000);
+      }
+
+      async function stopSharing() {
+        isSharing = false;
+
+        if (watchId !== null) {
+          if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+            const capacitorPlugins = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins : null;
+            const geolocationPlugin = capacitorPlugins && capacitorPlugins.Geolocation ? capacitorPlugins.Geolocation : null;
+            if (geolocationPlugin && geolocationPlugin.clearWatch) {
+              geolocationPlugin.clearWatch({ id: watchId });
+            }
+          } else if (navigator.geolocation) {
+            navigator.geolocation.clearWatch(watchId);
+          }
+          watchId = null;
+        }
+
+        if (intervalId !== null) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+
+        const routeKey = routeSelect.value || selectedRoute || 'route1';
+        selectedRoute = routeKey;
+        const payload = {
+          latitude: lastKnownPosition.latitude ?? null,
+          longitude: lastKnownPosition.longitude ?? null,
+          accuracy: lastKnownPosition.accuracy ?? null,
+          updatedAt: Date.now(),
+          isSharing: false,
+          driverName: currentDriverName || driverNameEntry.value.trim() || ''
+        };
+        await set(ref(db, `busLocation/${routeKey}`), payload);
+        startBtn.textContent = 'Start Sharing Location';
+        startBtn.classList.remove('sharing');
+        setStatus('Stopped', false);
+      }
+
+      document.querySelectorAll('.assign-btn').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          showAssignmentModal(button.dataset.route);
+        });
+      });
+
+      routeSelect.addEventListener('change', () => {
+        const nextRoute = routeSelect.value;
+        selectedRoute = nextRoute;
+        const info = routeMeta[nextRoute];
+        if (info) {
+          routeBadge.textContent = info.label;
+          assignmentTitle.textContent = `You are driving ${info.label}`;
+          routeScheduleText.textContent = info.schedule;
+          renderStopTimeline(info.stops);
+          setStatus(`You are driving ${info.label}`, true, false);
+        }
+      });
+
+      startBtn.addEventListener('click', startSharing);
+      stopBtn.addEventListener('click', () => {
+        stopSharing();
+      });
+
+      changeRouteBtn.addEventListener('click', () => {
+        if (currentDriverName && selectedRoute) {
+          removeCurrentDriverAssignment(selectedRoute, currentDriverName);
+        }
+        stopSharing();
+        currentDriverName = '';
+        if (screenStack[screenStack.length - 1] === 'driverShare') {
+          screenStack.pop();
+        }
+        showRouteSelection();
+      });
+
+      routeBackBtn.addEventListener('click', () => {
+        goBack();
+      });
+
+      shareBackBtn.addEventListener('click', () => {
+        goBack();
+      });
+
+      confirmAssignmentBtn.addEventListener('click', handleAssignmentConfirm);
+      cancelAssignmentBtn.addEventListener('click', () => {
+        hideAssignmentModal();
+      });
+
+      assignmentDriverNameInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          handleAssignmentConfirm();
+        }
+      });
+
+      driverNameEntry.addEventListener('input', () => {
+        currentDriverName = driverNameEntry.value.trim();
+      });
+
+      openSettingsBtn.addEventListener('click', async () => {
+        hidePermissionModal();
+        const appPlugin = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins.App : null;
+        if (appPlugin && appPlugin.openUrl) {
+          await appPlugin.openUrl({ url: 'app-settings:' });
+        } else if (window.open) {
+          window.open('app-settings:', '_self');
+        }
+      });
+
+      cancelPermissionBtn.addEventListener('click', () => {
+        hidePermissionModal();
+        setStatus('Location permission is required to share the bus location.', false, true);
+      });
+
+      if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+        const { App } = window.Capacitor;
+        App.addListener('backButton', () => {
+          goBack();
+        });
+      }
+
+      const assignments = getAssignments();
+      if (assignments.length > 0) {
+        const latestAssignment = assignments[assignments.length - 1];
+        selectedRoute = latestAssignment.routeKey;
+        currentDriverName = latestAssignment.driverName || '';
+        driverNameEntry.value = currentDriverName;
+        routeSelect.value = selectedRoute;
+        screenStack = ['login', 'selectBus', 'driverShare'];
+        showSharingScreen(selectedRoute);
+      } else {
+        driverNameEntry.value = '';
+        routeSelect.value = 'route1';
+        screenStack = ['login', 'selectBus'];
+        showRouteSelection();
+      }
+    </script>
+  </body>
+</html>

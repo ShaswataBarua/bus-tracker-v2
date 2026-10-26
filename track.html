@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f7a4a" />
+    <title>BGC Campus Bus</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <style>
+      :root {
+        --ink: #111a16;
+        --muted: #64726b;
+        --line: #e4e9e5;
+        --surface: #ffffff;
+        --canvas: #f2f5f2;
+        --accent: #0f7a4a;
+        --radius: 20px;
+        --sheet-h: 218px;
+        --shadow: 0 10px 34px rgba(12, 32, 23, 0.14);
+        --shadow-soft: 0 4px 16px rgba(12, 32, 23, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+
+      body {
+        font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+          "Helvetica Neue", Arial, sans-serif;
+        color: var(--ink);
+        background: var(--canvas);
+        overflow: hidden;
+      }
+
+      button {
+        font: inherit;
+        color: inherit;
+        border: 0;
+        background: none;
+        cursor: pointer;
+      }
+
+      button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      #map {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        background: #e8ece8;
+      }
+
+      .leaflet-container {
+        font: inherit;
+        background: #e8ece8;
+      }
+
+      /* ---------- top bar ---------- */
+
+      .topbar {
+        position: fixed;
+        top: calc(12px + env(safe-area-inset-top));
+        left: 12px;
+        right: 12px;
+        z-index: 600;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        pointer-events: none;
+      }
+
+      .brand,
+      .live-badge {
+        pointer-events: auto;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(17, 26, 22, 0.07);
+        box-shadow: var(--shadow-soft);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 14px 7px 8px;
+        border-radius: 15px;
+        min-width: 0;
+      }
+
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+        flex: 0 0 34px;
+        display: grid;
+        place-items: center;
+        border-radius: 11px;
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .brand-mark svg {
+        width: 19px;
+        height: 19px;
+      }
+
+      .brand-text {
+        min-width: 0;
+        line-height: 1.15;
+      }
+
+      .brand-kicker {
+        display: block;
+        font-size: 0.62rem;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .brand-text strong {
+        display: block;
+        font-size: 0.98rem;
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+      }
+
+      .live-badge {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 13px;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .live-badge .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #a8b3ad;
+      }
+
+      .live-badge.is-live {
+        color: #0b5c39;
+      }
+
+      .live-badge.is-live .dot {
+        background: #14a05f;
+        box-shadow: 0 0 0 0 rgba(20, 160, 95, 0.45);
+        animation: badge-pulse 2.4s ease-out infinite;
+      }
+
+      @keyframes badge-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(20, 160, 95, 0.4); }
+        70% { box-shadow: 0 0 0 7px rgba(20, 160, 95, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(20, 160, 95, 0); }
+      }
+
+      .notice {
+        position: fixed;
+        top: calc(70px + env(safe-area-inset-top));
+        left: 12px;
+        right: 12px;
+        z-index: 610;
+        padding: 10px 14px;
+        border-radius: 13px;
+        background: #fff7e8;
+        border: 1px solid #ecd9a8;
+        color: #7a5a12;
+        font-size: 0.8rem;
+        line-height: 1.35;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .notice[hidden] {
+        display: none;
+      }
+
+      /* ---------- recenter ---------- */
+
+      .fab {
+        position: fixed;
+        right: 14px;
+        bottom: calc(var(--sheet-h) + 16px);
+        z-index: 620;
+        width: 46px;
+        height: 46px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(17, 26, 22, 0.08);
+        box-shadow: var(--shadow);
+        color: #31413a;
+        transition: color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+      }
+
+      .fab svg {
+        width: 21px;
+        height: 21px;
+      }
+
+      .fab:active {
+        transform: scale(0.94);
+      }
+
+      .fab.is-following {
+        color: #fff;
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+
+      /* ---------- bus marker ---------- */
+
+      .bus-pin {
+        position: relative;
+      }
+
+      .bus-pin__halo {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: var(--pin);
+        opacity: 0.18;
+        animation: pin-halo 2.6s ease-out infinite;
+      }
+
+      .bus-pin__body {
+        position: absolute;
+        inset: 7px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--pin);
+        color: #fff;
+        border: 2.5px solid #fff;
+        box-shadow: 0 4px 12px rgba(10, 30, 20, 0.35);
+      }
+
+      .bus-pin__body svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .bus-pin.is-offline .bus-pin__halo {
+        display: none;
+      }
+
+      .bus-pin.is-offline .bus-pin__body {
+        background: #8b978f;
+        box-shadow: 0 3px 8px rgba(10, 30, 20, 0.22);
+      }
+
+      @keyframes pin-halo {
+        0% { transform: scale(0.62); opacity: 0.26; }
+        70% { transform: scale(1.18); opacity: 0; }
+        100% { transform: scale(1.18); opacity: 0; }
+      }
+
+      /* ---------- bottom sheet ---------- */
+
+      .sheet {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 700;
+        display: flex;
+        flex-direction: column;
+        padding: 0 16px calc(10px + env(safe-area-inset-bottom));
+        background: var(--surface);
+        border-radius: 22px 22px 0 0;
+        box-shadow: 0 -10px 40px rgba(12, 32, 23, 0.16);
+      }
+
+      .grip {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 22px;
+        flex: 0 0 22px;
+        color: var(--muted);
+      }
+
+      .grip span {
+        width: 40px;
+        height: 4px;
+        border-radius: 999px;
+        background: #d7deda;
+      }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .tab {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 9px 10px;
+        border-radius: 13px;
+        border: 1px solid var(--line);
+        background: #fbfcfb;
+        text-align: left;
+        transition: border-color 0.18s ease, background 0.18s ease;
+      }
+
+      .tab-top {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.83rem;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+      }
+
+      .tab-dot {
+        width: 7px;
+        height: 7px;
+        flex: 0 0 7px;
+        border-radius: 50%;
+        background: #c3cbc6;
+      }
+
+      .tab.is-live .tab-dot {
+        background: var(--c);
+      }
+
+      .tab-state {
+        font-size: 0.66rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #9aa49e;
+        padding-left: 13px;
+      }
+
+      .tab.is-live .tab-state {
+        color: #0b6b41;
+      }
+
+      .tab.is-active {
+        border-color: color-mix(in srgb, var(--c) 45%, #ffffff);
+        background: color-mix(in srgb, var(--c) 7%, #ffffff);
+      }
+
+      .route-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .route-id {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .route-swatch {
+        width: 4px;
+        height: 34px;
+        flex: 0 0 4px;
+        border-radius: 999px;
+        background: var(--accent);
+      }
+
+      .route-id h2 {
+        margin: 0;
+        font-size: 1.22rem;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+      }
+
+      .route-id p {
+        margin: 2px 0 0;
+        font-size: 0.76rem;
+        color: var(--muted);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 11px;
+        border-radius: 999px;
+        background: #f1f3f1;
+        color: #66736c;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .pill::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .pill.is-live {
+        background: #e7f6ee;
+        color: #0b6b41;
+      }
+
+      .pill.is-offline {
+        background: #f1f3f1;
+        color: #6b7871;
+      }
+
+      .meta {
+        display: grid;
+        grid-template-columns: 1.15fr 1fr 0.8fr;
+        gap: 10px;
+        padding: 12px 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .meta-cell {
+        min-width: 0;
+      }
+
+      .meta-label {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 0.63rem;
+        font-weight: 650;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #93a099;
+      }
+
+      .meta-cell strong {
+        font-size: 0.85rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .driver {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+      }
+
+      .avatar {
+        width: 24px;
+        height: 24px;
+        flex: 0 0 24px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--c, var(--accent)) 12%, #ffffff);
+        color: var(--c, var(--accent));
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
+
+      .driver strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .details {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 20px;
+        padding: 14px 0 4px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: #d3dbd6 transparent;
+      }
+
+      .details::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .details::-webkit-scrollbar-thumb {
+        background: #d3dbd6;
+        border-radius: 999px;
+      }
+
+      .details::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .details h3 {
+        margin: 0 0 9px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #93a099;
+      }
+
+      .stops {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        position: relative;
+      }
+
+      .stops li {
+        position: relative;
+        padding: 0 0 9px 18px;
+        font-size: 0.83rem;
+        line-height: 1.3;
+        color: #2c3a33;
+      }
+
+      .stops li::before {
+        content: "";
+        position: absolute;
+        left: 1px;
+        top: 4px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid color-mix(in srgb, var(--c, var(--accent)) 60%, #ffffff);
+      }
+
+      .stops li::after {
+        content: "";
+        position: absolute;
+        left: 4px;
+        top: 14px;
+        bottom: 0;
+        width: 1.5px;
+        background: #e6ebe7;
+      }
+
+      .stops li:last-child {
+        padding-bottom: 0;
+        font-weight: 650;
+      }
+
+      .stops li:last-child::before {
+        background: var(--c, var(--accent));
+        border-color: var(--c, var(--accent));
+      }
+
+      .stops li:last-child::after {
+        display: none;
+      }
+
+      .schedule {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+      }
+
+      .schedule li {
+        position: relative;
+        padding-left: 13px;
+        font-size: 0.8rem;
+        line-height: 1.4;
+        color: #46564e;
+      }
+
+      .schedule li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 6px;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #b9c3bd;
+      }
+
+      .credit {
+        margin: 8px 0 0;
+        text-align: center;
+        font-size: 0.62rem;
+        color: #a5aea9;
+      }
+
+      .credit a {
+        color: inherit;
+        text-decoration: underline;
+      }
+
+      /* ---------- small screens ---------- */
+
+      @media (max-width: 759px) {
+        .sheet {
+          padding-left: 14px;
+          padding-right: 14px;
+        }
+
+        .details {
+          grid-template-columns: 1fr;
+          gap: 16px;
+          max-height: 0;
+          padding-top: 0;
+          overflow: hidden;
+          opacity: 0;
+          transition: max-height 0.32s ease, opacity 0.22s ease, padding 0.32s ease;
+        }
+
+        .sheet.is-expanded .details {
+          max-height: 36vh;
+          padding-top: 14px;
+          overflow-y: auto;
+          opacity: 1;
+        }
+
+        .grip {
+          cursor: pointer;
+        }
+      }
+
+      @media (min-width: 760px) {
+        .sheet {
+          left: 50%;
+          transform: translateX(-50%);
+          width: min(660px, calc(100% - 32px));
+          bottom: 16px;
+          border-radius: var(--radius);
+          padding: 0 22px 12px;
+        }
+
+        .details {
+          max-height: 26vh;
+        }
+
+        .fab {
+          bottom: calc(var(--sheet-h) + 28px);
+        }
+
+        .brand-kicker {
+          font-size: 0.64rem;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map" role="application" aria-label="Live bus map"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" />
+            <path d="M4 11h16" />
+            <path d="M8 17v2M16 17v2" />
+            <path d="M8.5 14h.01M15.5 14h.01" />
+          </svg>
+        </span>
+        <div class="brand-text">
+          <span class="brand-kicker">BGC Trust University</span>
+          <strong>Campus Bus</strong>
+        </div>
+      </div>
+      <div class="live-badge" id="liveBadge" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="liveBadgeText">Connecting</span>
+      </div>
+    </header>
+
+    <div class="notice" id="notice" role="status" hidden></div>
+
+    <button class="fab is-following" id="recenterBtn" type="button" aria-label="Center map on the bus">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="7" />
+        <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none" />
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+      </svg>
+    </button>
+
+    <section class="sheet" id="sheet" aria-label="Route information">
+      <button class="grip" id="grip" type="button" aria-expanded="false" aria-controls="details" aria-label="Show stops and schedule">
+        <span></span>
+      </button>
+
+      <div class="tabs" role="tablist" aria-label="Bus routes" id="tabs"></div>
+
+      <div class="route-head">
+        <div class="route-id">
+          <span class="route-swatch" id="routeSwatch" aria-hidden="true"></span>
+          <div>
+            <h2 id="routeTitle">Bus 1</h2>
+            <p id="routeSub">Campus shuttle</p>
+          </div>
+        </div>
+        <span class="pill" id="statusPill">No data</span>
+      </div>
+
+      <div class="meta">
+        <div class="meta-cell">
+          <span class="meta-label">Driver</span>
+          <div class="driver">
+            <span class="avatar" id="driverAvatar" aria-hidden="true">–</span>
+            <strong id="driverName">No driver</strong>
+          </div>
+        </div>
+        <div class="meta-cell">
+          <span class="meta-label" id="updatedLabel">Updated</span>
+          <strong id="updatedText">—</strong>
+        </div>
+        <div class="meta-cell">
+          <span class="meta-label">Accuracy</span>
+          <strong id="accuracyText">—</strong>
+        </div>
+      </div>
+
+      <div class="details" id="details">
+        <div>
+          <h3>Stops <span id="stopCount"></span></h3>
+          <ol class="stops" id="stopList"></ol>
+        </div>
+        <div>
+          <h3>Schedule</h3>
+          <ul class="schedule" id="scheduleList"></ul>
+        </div>
+      </div>
+
+      <p class="credit">
+        Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors
+      </p>
+    </section>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyAynPmLrkqPKD5VHd1HY2vt-bq5xmJ9fuc",
+        authDomain: "bus-tracker-11b51.firebaseapp.com",
+        databaseURL: "https://bus-tracker-11b51-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "bus-tracker-11b51",
+        storageBucket: "bus-tracker-11b51.firebasestorage.app",
+        messagingSenderId: "28373051420",
+        appId: "1:28373051420:web:da11dd98ec4249b31697d9"
+      };
+
+      const ROUTES = {
+        route1: {
+          name: "Bus 1",
+          color: "#0f7a4a",
+          stops: [
+            "GEC", "2 No Gate", "Muradpur", "Chandgaon Thana", "Access Road",
+            "Tulatoli", "New bridge", "Moizzartek", "Shantirhut", "Badamtol",
+            "Bypass road", "Komol munshir hut", "BGC Biydha Nagar"
+          ],
+          schedule: [
+            "Leaves 8:15 AM — reaches campus 9:30 AM",
+            "Returns to drop students at 3:00 PM",
+            "Campus: BGC Trust University"
+          ]
+        },
+        route2: {
+          name: "Bus 2",
+          color: "#1f6fb2",
+          stops: [
+            "Oxygen", "Muradpur", "Chandgaon Thana", "Access Road", "Tulatoli",
+            "New bridge", "Moizzartek", "Shantirhut", "Badamtol", "Bypass road",
+            "Komol munshir hut", "BGC Biydha Nagar"
+          ],
+          schedule: [
+            "Leaves 8:10 AM — reaches campus 9:30 AM",
+            "Returns to drop students at 3:00 PM",
+            "Campus: BGC Trust University"
+          ]
+        },
+        route3: {
+          name: "Bus 3",
+          color: "#b5751a",
+          stops: [
+            "Agrabad", "Newmarket", "Kotoyali", "Newbridge", "Moizzartek",
+            "Shantirhut", "Badamtol", "Bypass road", "Komol munshir hut",
+            "BGC Biydha Nagar"
+          ],
+          schedule: [
+            "Leaves 8:10 AM — reaches campus 9:30 AM",
+            "Returns to drop students at 3:00 PM",
+            "Campus: BGC Trust University"
+          ]
+        },
+        route4: {
+          name: "Bus 4",
+          color: "#6b4fbb",
+          stops: [
+            "Anayet bazar", "DC hill", "Kotuyali", "New bridge", "Moizzartek",
+            "Shantirhut", "Badamtol", "Bypass road", "Komol munshir hut",
+            "BGC Biydha Nagar"
+          ],
+          schedule: [
+            "Leaves 8:10 AM — reaches campus 9:30 AM",
+            "Returns to drop students at 3:00 PM",
+            "Campus: BGC Trust University"
+          ]
+        }
+      };
+
+      const CAMPUS = [22.364, 91.812];
+      const STALE_AFTER_MS = 60000;   // driver writes every ~10 s; a minute of silence means offline
+      const MOVE_MS = 1100;
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      const state = {
+        active: "route1",
+        follow: true,
+        hasPainted: false,
+        data: {},
+        lastStamp: {}
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const tabsEl = $("tabs");
+      const sheet = $("sheet");
+      const grip = $("grip");
+      const details = $("details");
+      const routeTitle = $("routeTitle");
+      const routeSub = $("routeSub");
+      const routeSwatch = $("routeSwatch");
+      const statusPill = $("statusPill");
+      const driverName = $("driverName");
+      const driverAvatar = $("driverAvatar");
+      const updatedLabel = $("updatedLabel");
+      const updatedText = $("updatedText");
+      const accuracyText = $("accuracyText");
+      const stopList = $("stopList");
+      const scheduleList = $("scheduleList");
+      const stopCount = $("stopCount");
+      const liveBadge = $("liveBadge");
+      const liveBadgeText = $("liveBadgeText");
+      const notice = $("notice");
+      const recenterBtn = $("recenterBtn");
+
+      let map, marker, accuracyCircle, moveFrame, displayPos, markerRoute, markerLive;
+      let flightUntil = 0;
+      const tabButtons = {};
+
+      /* ---------- map ---------- */
+
+      function initMap() {
+        map = L.map("map", {
+          zoomControl: false,
+          attributionControl: false,
+          minZoom: 11,
+          maxZoom: 19
+        }).setView(CAMPUS, 13);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19
+        }).addTo(map);
+
+        // Manual gestures stop the camera from following the bus.
+        map.on("dragstart", () => setFollow(false));
+      }
+
+      const busGlyph =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z"/>' +
+        '<path d="M4 11h16"/><path d="M8 17v2M16 17v2"/><path d="M8.5 14h.01M15.5 14h.01"/></svg>';
+
+      function busIcon(color, live) {
+        return L.divIcon({
+          className: "bus-pin" + (live ? "" : " is-offline"),
+          html:
+            '<span class="bus-pin__halo" style="--pin:' + color + '"></span>' +
+            '<span class="bus-pin__body" style="--pin:' + color + '">' + busGlyph + "</span>",
+          iconSize: [46, 46],
+          iconAnchor: [23, 23],
+          popupAnchor: [0, -20]
+        });
+      }
+
+      function clearMarker() {
+        if (moveFrame) cancelAnimationFrame(moveFrame);
+        moveFrame = null;
+        displayPos = null;
+        markerRoute = null;
+        markerLive = null;
+        flightUntil = 0;
+        if (marker) {
+          marker.remove();
+          marker = null;
+        }
+        if (accuracyCircle) {
+          accuracyCircle.remove();
+          accuracyCircle = null;
+        }
+      }
+
+      function easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+      }
+
+      function animateMarker(target) {
+        const from = displayPos || target;
+        if (reducedMotion || map.distance(from, target) > 3000) {
+          marker.setLatLng(target);
+          if (accuracyCircle) accuracyCircle.setLatLng(target);
+          displayPos = target;
+          return;
+        }
+
+        if (moveFrame) cancelAnimationFrame(moveFrame);
+        const started = performance.now();
+        const step = (now) => {
+          const progress = Math.min((now - started) / MOVE_MS, 1);
+          const eased = easeOutCubic(progress);
+          const point = L.latLng(
+            from.lat + (target.lat - from.lat) * eased,
+            from.lng + (target.lng - from.lng) * eased
+          );
+          marker.setLatLng(point);
+          if (accuracyCircle) accuracyCircle.setLatLng(point);
+          displayPos = point;
+          moveFrame = progress < 1 ? requestAnimationFrame(step) : null;
+        };
+        moveFrame = requestAnimationFrame(step);
+      }
+
+      function sheetPadding() {
+        const h = sheet.getBoundingClientRect().height;
+        return Math.min(h + 20, window.innerHeight - 120);
+      }
+
+      // Center the bus in the map area that is not covered by the top bar or the sheet.
+      function flyToBus(position, zoom) {
+        const visibleTop = 78;
+        const visibleBottom = window.innerHeight - sheetPadding();
+        const visibleCenter = (visibleTop + visibleBottom) / 2;
+        const offsetY = window.innerHeight / 2 - visibleCenter;
+        const point = map.project(position, zoom).add([0, offsetY]);
+        const center = map.unproject(point, zoom);
+        flightUntil = performance.now() + 1200;
+        if (reducedMotion) {
+          map.setView(center, zoom);
+        } else {
+          map.flyTo(center, zoom, { duration: 0.9 });
+        }
+      }
+
+      function followTo(latlng) {
+        if (!state.follow || performance.now() < flightUntil) return;
+        map.panInside(latlng, {
+          paddingTopLeft: [36, 92],
+          paddingBottomRight: [36, sheetPadding()],
+          animate: true,
+          duration: 0.6
+        });
+      }
+
+      function syncMarker(key, position, live, accuracy, shouldMove) {
+        const color = ROUTES[key].color;
+        const isNew = !marker;
+
+        if (isNew) {
+          marker = L.marker(position, {
+            icon: busIcon(color, live),
+            keyboard: false,
+            zIndexOffset: 400
+          }).addTo(map);
+          marker.setOpacity(0);
+          markerRoute = key;
+          markerLive = live;
+          displayPos = position;
+          flyToBus(position, Math.max(map.getZoom(), 17));
+          setTimeout(() => {
+            if (marker) marker.setOpacity(live ? 1 : 0.55);
+          }, 60);
+        } else {
+          if (markerRoute !== key || markerLive !== live) {
+            marker.setIcon(busIcon(color, live));
+            markerRoute = key;
+            markerLive = live;
+          }
+          if (shouldMove) animateMarker(position);
+          marker.setOpacity(live ? 1 : 0.55);
+        }
+
+        const radius = Number(accuracy);
+        if (live && Number.isFinite(radius) && radius > 0) {
+          if (!accuracyCircle) {
+            accuracyCircle = L.circle(position, {
+              radius,
+              color,
+              weight: 1.5,
+              opacity: 0.5,
+              fillColor: color,
+              fillOpacity: 0.1,
+              interactive: false
+            }).addTo(map);
+          } else {
+            accuracyCircle.setLatLng(position).setRadius(radius);
+            accuracyCircle.setStyle({ color, opacity: 0.5, fillOpacity: 0.1 });
+          }
+        } else if (accuracyCircle) {
+          accuracyCircle.setStyle({ opacity: 0, fillOpacity: 0 });
+        }
+
+        if (live && shouldMove) followTo(position);
+      }
+
+      function setFollow(value) {
+        state.follow = value;
+        recenterBtn.classList.toggle("is-following", value);
+      }
+
+      /* ---------- formatting ---------- */
+
+      function formatClock(timestamp) {
+        return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      }
+
+      function timeAgo(timestamp) {
+        const diff = Math.max(0, Date.now() - Number(timestamp));
+        if (diff < 5000) return "just now";
+        if (diff < 60000) return Math.round(diff / 1000) + "s ago";
+        if (diff < 3600000) return Math.round(diff / 60000) + " min ago";
+        return formatClock(timestamp);
+      }
+
+      function readCoords(data) {
+        if (!data || data.latitude == null || data.longitude == null) return null;
+        const lat = Number(data.latitude);
+        const lng = Number(data.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        return L.latLng(lat, lng);
+      }
+
+      function isLive(data) {
+        if (!data || !data.isSharing) return false;
+        if (!readCoords(data)) return false;
+        const stamp = Number(data.updatedAt);
+        if (Number.isFinite(stamp) && stamp > 0 && Date.now() - stamp > STALE_AFTER_MS) return false;
+        return true;
+      }
+
+      /* ---------- rendering ---------- */
+
+      function buildTabs() {
+        Object.entries(ROUTES).forEach(([key, route]) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "tab";
+          button.dataset.route = key;
+          button.setAttribute("role", "tab");
+          button.setAttribute("aria-selected", key === state.active ? "true" : "false");
+          button.style.setProperty("--c", route.color);
+          button.innerHTML =
+            '<span class="tab-top"><span class="tab-dot" aria-hidden="true"></span>' +
+            route.name +
+            '</span><span class="tab-state">—</span>';
+          button.addEventListener("click", () => setActive(key, true));
+          tabsEl.appendChild(button);
+          tabButtons[key] = button;
+        });
+      }
+
+      function renderStatic(key) {
+        const route = ROUTES[key];
+        routeTitle.textContent = route.name;
+        routeSub.textContent = "Campus shuttle";
+        routeSwatch.style.background = route.color;
+        sheet.style.setProperty("--accent", route.color);
+        stopCount.textContent = "(" + route.stops.length + ")";
+        stopList.innerHTML = route.stops.map((stop) => "<li>" + stop + "</li>").join("");
+        scheduleList.innerHTML = route.schedule.map((line) => "<li>" + line + "</li>").join("");
+      }
+
+      function renderTabs() {
+        let liveCount = 0;
+        Object.keys(ROUTES).forEach((key) => {
+          const data = state.data[key];
+          const live = isLive(data);
+          if (live) liveCount += 1;
+          const button = tabButtons[key];
+          button.classList.toggle("is-live", live);
+          button.querySelector(".tab-state").textContent = live
+            ? "Live"
+            : readCoords(data)
+              ? "Offline"
+              : "—";
+        });
+
+        liveBadge.classList.toggle("is-live", liveCount > 0);
+        liveBadgeText.textContent = liveCount
+          ? liveCount + (liveCount === 1 ? " bus live" : " buses live")
+          : "No live buses";
+      }
+
+      function setPill(text, className) {
+        statusPill.className = "pill" + (className ? " " + className : "");
+        statusPill.textContent = text;
+      }
+
+      function renderActive() {
+        const key = state.active;
+        const route = ROUTES[key];
+        const data = state.data[key];
+        const live = isLive(data);
+        const position = readCoords(data);
+
+        sheet.style.setProperty("--accent", route.color);
+
+        if (!data) {
+          setPill("No data", "");
+        } else {
+          setPill(live ? "Live" : "Offline", live ? "is-live" : "is-offline");
+        }
+
+        const name = data && data.driverName ? String(data.driverName).trim() : "";
+        driverName.textContent = name || "No driver";
+        driverAvatar.textContent = name ? name.charAt(0).toUpperCase() : "–";
+        driverAvatar.style.setProperty("--c", route.color);
+
+        if (position && data.updatedAt) {
+          updatedLabel.textContent = live ? "Updated" : "Last seen";
+          updatedText.textContent = live ? timeAgo(data.updatedAt) : formatClock(data.updatedAt);
+          updatedText.title = new Date(data.updatedAt).toLocaleString();
+        } else {
+          updatedLabel.textContent = "Updated";
+          updatedText.textContent = "—";
+          updatedText.removeAttribute("title");
+        }
+
+        const radius = data ? Number(data.accuracy) : NaN;
+        accuracyText.textContent =
+          live && Number.isFinite(radius) && radius > 0 ? Math.round(radius) + " m" : "—";
+
+        if (position) {
+          const stamp = Number(data.updatedAt) || 0;
+          const shouldMove = stamp !== state.lastStamp[key];
+          state.lastStamp[key] = stamp;
+          syncMarker(key, position, live, radius, shouldMove);
+        } else if (marker) {
+          marker.setOpacity(0);
+          if (accuracyCircle) accuracyCircle.setStyle({ opacity: 0, fillOpacity: 0 });
+        }
+      }
+
+      function setActive(key, fromUser) {
+        if (!ROUTES[key]) return;
+        const changed = key !== state.active;
+        state.active = key;
+
+        Object.entries(tabButtons).forEach(([routeKey, button]) => {
+          const active = routeKey === key;
+          button.classList.toggle("is-active", active);
+          button.setAttribute("aria-selected", active ? "true" : "false");
+        });
+
+        if (changed) {
+          renderStatic(key);
+          clearMarker();
+          state.lastStamp[key] = 0;
+          renderActive();
+        }
+
+        if (fromUser && map) {
+          setFollow(true);
+        }
+      }
+
+      /* ---------- sheet ---------- */
+
+      let expanded = !window.matchMedia("(max-width: 759px)").matches;
+
+      function setExpanded(value) {
+        expanded = value;
+        sheet.classList.toggle("is-expanded", value);
+        grip.setAttribute("aria-expanded", value ? "true" : "false");
+        grip.setAttribute("aria-label", value ? "Hide stops and schedule" : "Show stops and schedule");
+        syncSheetHeight();
+      }
+
+      function syncSheetHeight() {
+        const height = sheet.getBoundingClientRect().height;
+        document.documentElement.style.setProperty("--sheet-h", height + "px");
+      }
+
+      grip.addEventListener("click", () => setExpanded(!expanded));
+
+      recenterBtn.addEventListener("click", () => {
+        setFollow(true);
+        if (!displayPos) {
+          map.flyTo(CAMPUS, 14, { duration: reducedMotion ? 0 : 0.7 });
+          return;
+        }
+        flyToBus(displayPos, Math.max(map.getZoom(), 17));
+      });
+
+      window.addEventListener("resize", () => {
+        map.invalidateSize();
+        syncSheetHeight();
+      });
+
+      /* ---------- firebase ---------- */
+
+      function showNotice(message) {
+        notice.textContent = message;
+        notice.hidden = false;
+      }
+
+      function hideNotice() {
+        notice.hidden = true;
+      }
+
+      function handleSnapshot(value) {
+        hideNotice();
+        const routes = value || {};
+        let liveKey = null;
+
+        Object.keys(ROUTES).forEach((key) => {
+          state.data[key] = routes[key] || null;
+          if (liveKey === null && isLive(state.data[key])) liveKey = key;
+        });
+
+        renderTabs();
+
+        // On the very first load, open a bus that is actually live.
+        if (!state.hasPainted && liveKey && liveKey !== state.active) {
+          state.hasPainted = true;
+          setActive(liveKey, false);
+        } else {
+          state.hasPainted = true;
+          renderActive();
+        }
+      }
+
+      function connect() {
+        try {
+          const app = initializeApp(firebaseConfig);
+          const db = getDatabase(app);
+          onValue(
+            ref(db, "busLocation"),
+            (snapshot) => handleSnapshot(snapshot.val()),
+            (error) => {
+              console.error("Firebase listener error:", error);
+              liveBadge.classList.remove("is-live");
+              liveBadgeText.textContent = "Offline";
+              showNotice("Live data is unavailable right now. Check the connection and reload.");
+            }
+          );
+        } catch (error) {
+          console.error("Firebase init failed:", error);
+          liveBadge.classList.remove("is-live");
+          liveBadgeText.textContent = "Offline";
+          showNotice("Live tracking could not start. Showing route details only.");
+        }
+      }
+
+      /* ---------- boot ---------- */
+
+      initMap();
+      buildTabs();
+      renderStatic(state.active);
+      setActive(state.active, false);
+      setExpanded(expanded);
+      syncSheetHeight();
+      recenterBtn.classList.add("is-following");
+      connect();
+
+      setInterval(() => {
+        renderTabs();
+        renderActive();
+      }, 5000);
+
+      requestAnimationFrame(() => {
+        map.invalidateSize();
+        syncSheetHeight();
+      });
+
+      if ("ResizeObserver" in window) {
+        new ResizeObserver(syncSheetHeight).observe(sheet);
+      }
+
+      // Keep the camera above the sheet when it opens.
+      new MutationObserver(() => setTimeout(() => displayPos && followTo(displayPos), 340)).observe(sheet, {
+        attributes: true,
+        attributeFilter: ["class"]
+      });
+    </script>
+  </body>
+</html>
